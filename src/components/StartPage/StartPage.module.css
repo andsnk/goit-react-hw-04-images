@@ -1,0 +1,19 @@
+.startWrap {
+  display: flex;
+}
+
+.startIcon {
+  margin: 150px auto;
+  width: 300px;
+  height: 300px;
+  fill: grey;
+}
+
+.startTextWrap {
+  margin: 175px auto;
+  color: gray;
+}
+
+h2 {
+  font-size: xx-large;
+}
