@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import React, { useEffect, useState } from 'react';
 import Searchbar from './Searchbar/Searchbar';
 import { getPhoto } from 'api/api';
 import Loader from './Loader/Loader';
@@ -15,108 +15,92 @@ Notiflix.Notify.init({
   opacity: 1,
 });
 
-class App extends Component {
-  state = {
-    images: [],
-    page: 1,
-    query: '',
-    isLoading: false,
-    error: null,
-    total: 0,
-    largeImageURL: '',
-    tags: '',
-    showModal: false,
-  };
+const App = () => {
+  const [images, setImages] = useState([]);
+  const [page, setPage] = useState(1);
+  const [query, setQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [total, setTotal] = useState(0);
+  const [largeImageURL, setLargeImageURL] = useState('');
+  const [tags, setTags] = useState('');
+  const [showModal, setShowModal] = useState(false);
 
-  componentDidUpdate(_, prevState) {
-    const { query, page } = this.state;
-    if (prevState.query !== query || prevState.page !== page) {
-      this.fetchImages(query, page);
-    }
-  }
-
-  fetchImages = async (query, page) => {
-    this.setState({ isLoading: true });
-    try {
-      const { hits, totalHits } = await getPhoto(query, page);
-      this.setState({ error: null });
-      if (hits.length === 0) {
-        return Notiflix.Notify.failure(
-          'Sorry, there are no images matching your search query. Please try again.'
-        );
+  useEffect(() => {
+    const fetchImages = async () => {
+      setIsLoading(true);
+      try {
+        const { hits, totalHits } = await getPhoto(query, page);
+        setError(null);
+        if (hits.length === 0) {
+          return Notiflix.Notify.failure(
+            'Sorry, there are no images matching your search query. Please try again.'
+          );
+        }
+        setImages(prevImages => [...prevImages, ...hits]);
+        setTotal(totalHits);
+        if (page === 1) {
+          Notiflix.Notify.success(`Hooray! We found ${totalHits} images`);
+        }
+      } catch (error) {
+        setError(error.message);
+      } finally {
+        setIsLoading(false);
       }
-      this.setState(prevState => ({
-        images: [...prevState.images, ...hits],
-        total: totalHits,
-        hasLoadedImages: true,
-      }));
-      if (page === 1) {
-        Notiflix.Notify.success(`Hooray! We found ${totalHits} images`);
-      }
-    } catch (error) {
-      this.setState({ error: error.message });
-    } finally {
-      this.setState({ isLoading: false });
-    }
-  };
+    };
+    query && fetchImages();
+  }, [query, page]);
 
-  onHandleSubmit = value => {
-    if (value === this.state.query) {
+  const onHandleSubmit = value => {
+    if (value === query) {
       return Notiflix.Notify.info('You have already entered this value');
     }
-    this.setState({ query: value, page: 1, images: [] });
+    setQuery(value);
+    setPage(1);
+    setImages([]);
   };
 
-  onOpenModal = (largeImageURL, tags) => {
-    console.log(largeImageURL, tags);
+  const onOpenModal = (largeImageURL, tags) => {
     // this.setState({showModal: true, largeImageURL: largeImageURL, tags: tags})
-    this.setState({ showModal: true, largeImageURL, tags });
+    setShowModal(true);
+    setLargeImageURL(largeImageURL);
+    setTags(tags);
   };
 
-  onCloseModal = () => {
-    this.setState({ showModal: false, largeImageURL: '', tags: '' });
+  const onCloseModal = () => {
+    setShowModal(false);
+    setLargeImageURL('');
+    setTags('');
   };
 
-  onLoadMore = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
+  const onLoadMore = () => {
+    setPage(prevPage => prevPage + 1);
   };
 
-  render() {
-    const {
-      images,
-      isLoading,
-      error,
-      total,
-      largeImageURL,
-      tags,
-      showModal,
-      query,
-    } = this.state;
-    const allPage = total / images.length;
-    // loadMore: this.state.page < Math.ceil(totalHits / 12 )
-    return (
-      <>
-        <Searchbar onSubmit={this.onHandleSubmit} />
-        {query === '' && <StartPage />}
+  const allPage = total / images.length;
+  // loadMore: this.state.page < Math.ceil(totalHits / 12 )
+  return (
+    <>
+      <Searchbar onSubmit={onHandleSubmit} />
+      {query === '' && <StartPage />}
 
-        {isLoading && <Loader />}
-        {error && <ErrorMessage />}
-        {images.length > 0 && (
-          <ImageGallery images={images} onOpenModal={this.onOpenModal} />
-        )}
-        {allPage > 1 && !isLoading && images.length > 0 && (
-          <Button onClick={this.onLoadMore} />
-        )}
+      {isLoading && <Loader />}
+      {error && <ErrorMessage />}
+      {images.length > 0 && !error && (
+        <ImageGallery images={images} onOpenModal={onOpenModal} />
+      )}
+      {allPage > 1 && !isLoading && images.length > 0 && (
+        <Button onClick={onLoadMore} />
+      )}
 
-        <MyModal
-          largeImageURL={largeImageURL}
-          tags={tags}
-          isOpenModal={showModal}
-          isCloseModal={this.onCloseModal}
-        />
-      </>
-    );
-  }
-}
+      <MyModal
+        largeImageURL={largeImageURL}
+        tags={tags}
+        isOpenModal={showModal}
+        isCloseModal={onCloseModal}
+      />
+    </>
+  );
+};
 
 export default App;
